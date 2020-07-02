@@ -1,0 +1,48 @@
+#@ load("@ytt:data", "data")
+---
+apiVersion: keda.k8s.io/v1alpha1
+kind: ScaledObject
+metadata:
+  name: hangfire-consumer-multiply
+  namespace: default
+spec:
+  scaleType: job
+  pollingInterval: 5
+  jobTargetRef:    
+    parallelism: 1 #! [max number of desired pods](https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#controlling-parallelism)
+    completions: 1 #! [desired number of successfully finished pods](https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#controlling-parallelism)
+    activeDeadlineSeconds: 86400 #! Specifies the duration in seconds relative to the startTime that the job may be active before the system tries to terminate it; value must be positive integer
+    #! backoffLimit: 6 # Specifies the number of retries before marking this job failed. Defaults to 6
+    template:
+      spec:
+          containers:
+          - name: hangfire-consumer-multiply
+            image: #@ data.values.container_registry + "/hangfire-consumer:latest"
+            env:  
+              - name: IdleTimeoutSeconds
+                value: "10"
+              - name: HangfireQueue
+                value: "multiply"
+              - name: LogLevel
+                value: "Information"
+              - name: Hangfire__Username
+                value: #@ data.values.hangfire_instance_0_username
+              - name: Hangfire__Password
+                value: #@ data.values.hangfire_instance_0_password
+              - name: Hangfire__Address
+                value: #@ data.values.sql_server_loadbalancer_ip
+              - name: HttpLogEndpoint
+                value: #@ data.values.http_log_endpoint
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "0.2"              
+          restartPolicy: OnFailure
+  
+  triggers:
+    - type: external
+      metadata:
+        scalerAddress: keda-externalscaler-hangfire:80
+        hangfireInstance: "Example"
+        queue: "multiply"
+        maxScale: "5"

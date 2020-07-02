@@ -1,0 +1,59 @@
+#@ load("@ytt:data", "data")
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: hangfire-dashboard
+  namespace: default
+  labels:
+    app: hangfire-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hangfire-dashboard
+  template:
+    metadata:
+      labels:
+        app: hangfire-dashboard
+    spec:
+      containers:
+      - name: hangfire-dashboard
+        image: #@ data.values.container_registry + "/hangfire-dashboard:latest"
+        imagePullPolicy: Always
+        env:
+          - name: HangfireSqlInstances__0__Name
+            value: "Example"
+          - name: HangfireSqlInstances__0__Username
+            value: #@ data.values.hangfire_instance_0_username
+          - name: HangfireSqlInstances__0__Password
+            value: #@ data.values.hangfire_instance_0_password
+          - name: HangfireSqlInstances__0__Address
+            value: #@ data.values.sql_server_loadbalancer_ip
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hangfire-dashboard
+  namespace: default
+spec:
+  ports:
+  - name: http
+    targetPort: 80
+    port: 80
+  selector:
+    app: hangfire-dashboard
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: hangfire-dashboard
+spec:
+  rules:
+  - host: hangfire-dashboard.internal
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: hangfire-dashboard
+          servicePort: 80

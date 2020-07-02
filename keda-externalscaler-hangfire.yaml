@@ -1,0 +1,45 @@
+#@ load("@ytt:data", "data")
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: keda-externalscaler-hangfire
+  namespace: keda
+  labels:
+    app: keda-externalscaler-hangfire
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keda-externalscaler-hangfire
+  template:
+    metadata:
+      labels:
+        app: keda-externalscaler-hangfire
+    spec:
+      containers:
+      - name: keda-externalscaler-hangfire
+        image: #@ data.values.container_registry + "/keda-externalscaler-hangfire:latest"
+        imagePullPolicy: Always
+        env:
+          - name: HangfireSqlInstances__0__Name
+            value: "Example"
+          - name: HangfireSqlInstances__0__Username
+            value: #@ data.values.hangfire_instance_0_username
+          - name: HangfireSqlInstances__0__Password
+            value: #@ data.values.hangfire_instance_0_password
+          - name: HangfireSqlInstances__0__Address
+            value: #@ data.values.sql_server_loadbalancer_ip
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keda-externalscaler-hangfire
+  namespace: keda
+spec:
+  ports:
+  - name: tcp
+    targetPort: 80
+    port: 80
+  selector:
+    app: keda-externalscaler-hangfire
