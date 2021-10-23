@@ -3,6 +3,7 @@
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: keda-example
   name: sqlserver
   annotations:
     service.beta.kubernetes.io/azure-load-balancer-internal: 'true'
@@ -19,6 +20,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: keda-example
   name: sqlserver
 spec:
   selector:
@@ -51,11 +53,12 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
+  namespace: keda-example
   name: mssql-system
   labels:
     type: local
 spec:
-  storageClassName: manual
+  storageClassName: default
   capacity:
     storage: 1Gi
   accessModes:
@@ -67,9 +70,10 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
+  namespace: keda-example
   name: mssql-system-pv-claim
 spec:
-  storageClassName: manual
+  storageClassName: default
   accessModes:
     - ReadWriteOnce
   resources:

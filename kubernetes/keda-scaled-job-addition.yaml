@@ -1,12 +1,11 @@
 #@ load("@ytt:data", "data")
 ---
-apiVersion: keda.k8s.io/v1alpha1
-kind: ScaledObject
+kind: ScaledJob
+apiVersion: keda.sh/v1alpha1
 metadata:
-  name: hangfire-consumer-addition
-  namespace: default
+  namespace: keda-example
+  name: hangfire-consumer-addition  
 spec:
-  scaleType: job
   pollingInterval: 5
   jobTargetRef:    
     parallelism: 1 #! [max number of desired pods](https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#controlling-parallelism)
@@ -33,10 +32,12 @@ spec:
                 value: #@ data.values.sql_server_loadbalancer_ip
               - name: HttpLogEndpoint
                 value: #@ data.values.http_log_endpoint
+              - name: StartupDelay
+                value: "15"
             resources:
               requests:
                 memory: "256Mi"
-                cpu: "0.2"              
+                cpu: "0.01"              
           restartPolicy: OnFailure 
 
   triggers:
@@ -45,4 +46,5 @@ spec:
         scalerAddress: keda-externalscaler-hangfire:80
         hangfireInstance: "Example"
         queue: "addition"
-        maxScale: "5"
+        targetSize: "3"
+        maxScale: "10"

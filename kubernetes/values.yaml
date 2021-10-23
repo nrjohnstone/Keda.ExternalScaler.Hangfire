@@ -1,0 +1,7 @@
+#@data/values
+---
+container_registry: dnjcontainers.azurecr.io
+sql_server_loadbalancer_ip: 192.168.131.176
+hangfire_instance_0_username: sa
+hangfire_instance_0_password: Password@1
+http_log_endpoint: http://logstash.devnathan.omniaretail.internal:19500

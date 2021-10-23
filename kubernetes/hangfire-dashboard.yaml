@@ -1,10 +1,10 @@
 #@ load("@ytt:data", "data")
 ---
 kind: Deployment
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 metadata:
   name: hangfire-dashboard
-  namespace: default
+  namespace: keda-example
   labels:
     app: hangfire-dashboard
 spec:
@@ -35,7 +35,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: hangfire-dashboard
-  namespace: default
+  namespace: keda-example
 spec:
   ports:
   - name: http
@@ -47,6 +47,7 @@ spec:
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
+  namespace: keda-example
   name: hangfire-dashboard
 spec:
   rules:
