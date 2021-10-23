@@ -3,8 +3,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <AssemblyName>Keda.ExternalScaler.Hangfire</AssemblyName>
-    <RootNamespace>Keda.ExternalScaler.Hangfire</RootNamespace>
+    <AssemblyName>HangfireExternalScaler</AssemblyName>
+    <RootNamespace>HangfireExternalScaler</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

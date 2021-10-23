@@ -3,7 +3,7 @@ using Serilog.Events;
 using Serilog.Sinks.InMemory;
 using Serilog.Sinks.SystemConsole.Themes;
 
-namespace Tests.Unit
+namespace HangfireExternalScaler.Tests.Unit
 {
     internal class SerilogConfiguration
     {

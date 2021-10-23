@@ -1,14 +1,15 @@
 ﻿using System;
 using Common.Utilities.Configuration;
-using Keda.ExternalScaler.Hangfire.Configuration;
+using HangfireExternalScaler.Configuration;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 
-namespace Keda.ExternalScaler.Hangfire
+namespace HangfireExternalScaler
 {
-    class Program
+    internal class Program
     {
         public const string ApplicationName = "Keda.ExternalScaler.Hangfire";
+        public const string BuildVersion = "1.3";
 
         static void Main(string[] args)
         {
@@ -25,7 +26,7 @@ namespace Keda.ExternalScaler.Hangfire
                 Environment.Exit(-1);
             }
 
-            Log.Information("Starting {ApplicationName} v1.0", ApplicationName);
+            Log.Information("Starting {ApplicationName} v{BuildVersion}", ApplicationName, BuildVersion);
 
             var applicationHostBuilder = new ApplicationHostBuilder(args, settings);
 

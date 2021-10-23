@@ -1,10 +1,11 @@
 ﻿using System.Collections.Generic;
 using Hangfire.Storage;
 
-namespace Keda.ExternalScaler.Hangfire
+namespace HangfireExternalScaler
 {
     /// <summary>
     /// Provide keyed access to a collection of Hangfire MonitoringApi instances
+    /// for handling multiple hangfire instances with a single Hangfire External Scaler
     /// </summary>
     public class HangfireMonitoringRouter : IHangfireMetricsApi
     {
@@ -15,6 +16,11 @@ namespace Keda.ExternalScaler.Hangfire
             _monitoringApis = new Dictionary<string, IMonitoringApi>();
         }
 
+        public bool Exists(string hangfireInstanceName)
+        {
+            return _monitoringApis.ContainsKey(hangfireInstanceName);
+        }
+        
         public void AddMonitoringApi(string hangfireInstanceName, IMonitoringApi monitoringApi)
         {
             _monitoringApis.Add(hangfireInstanceName, monitoringApi);

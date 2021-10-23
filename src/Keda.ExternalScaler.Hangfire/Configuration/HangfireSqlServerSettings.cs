@@ -1,4 +1,4 @@
-﻿namespace Keda.ExternalScaler.Hangfire.Configuration
+﻿namespace HangfireExternalScaler.Configuration
 {
     public class HangfireSqlServerSettings
     {

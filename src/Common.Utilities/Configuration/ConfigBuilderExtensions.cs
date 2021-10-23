@@ -10,7 +10,7 @@ namespace Common.Utilities.Configuration
         /// <summary>
         /// Allow for overriding values when running locally on a developer machine by using configuration stored
         /// outside the git repo which prevents secrets from being committed etc...
-        /// Will check for an optional "settings.yaml" and "settings.ini" file
+        /// Will check for an optional "settings.yaml" and "settings.ini" file from the local app data location
         /// </summary>
         /// <param name="builder"></param>
         /// <param name="applicationName"></param>

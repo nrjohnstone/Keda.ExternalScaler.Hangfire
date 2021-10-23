@@ -1,18 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Common.Utilities.Configuration;
+using Externalscaler;
 using FluentAssertions;
 using Grpc.Core;
 using Grpc.Net.Client;
-using Keda.ExternalScaler.Hangfire.Configuration;
+using HangfireExternalScaler.Configuration;
 using NUnit.Framework;
-using Scaler;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.InMemory;
 
-namespace Tests.Unit
+namespace HangfireExternalScaler.Tests.Unit
 {
     /// <summary>
     /// This Test Fixture starts an instance of the Keda.ExternalScaler.Hangfire and then runs unit tests in a fixed order.
@@ -46,7 +45,7 @@ namespace Tests.Unit
 
             _server = new ExternalScalerHangfireHelper(settings);
             _server.Run();
-
+            
             _channel = GrpcChannel.ForAddress(new Uri("https://localhost:5001"));
         }
 
@@ -58,53 +57,22 @@ namespace Tests.Unit
         }
 
         [Test]
-        [Order(100)]
-        public void ExternalScalerServer_New_ShouldStoreConfiguration()
-        {
-            var client = new ExternalScaler.ExternalScalerClient(_channel);
-
-            // act
-            var reply = client.New(new NewRequest()
-            {
-                Metadata = { new Dictionary<string, string>()
-                {
-                    {"queue","QueueA"},
-                    {"maxScale","10"},
-                    {"hangfireInstance","Test1"}
-                }},
-                ScaledObjectRef = new ScaledObjectRef()
-                {
-                    Name = "SomeScalerName",
-                    Namespace = "default"
-                }
-            });
-
-            // assert
-            reply.Should().NotBeNull();
-
-            var hangfireScalerConfiguration = _server.ScaledObjectRepository.Get(new ScaledObjectRef()
-            {
-                Name = "SomeScalerName",
-                Namespace = "default"
-            });
-
-            hangfireScalerConfiguration.Should().NotBeNull();
-            hangfireScalerConfiguration.InstanceName.Should().Be("Test1");
-            hangfireScalerConfiguration.MaxScale.Should().Be(10);
-            hangfireScalerConfiguration.Queue.Should().Be("QueueA");
-        }
-
-        [Test]
         [Order(200)]
         public void ExternalScalerServer_IsActive_ShouldReturnSuccessfully()
         {
             var client = new ExternalScaler.ExternalScalerClient(_channel);
-
+            
             // act
             var reply = client.IsActive(new ScaledObjectRef()
             {
                 Name = "SomeScalerName",
-                Namespace = "default"
+                Namespace = "default",
+                ScalerMetadata =
+                {
+                    {"hangfireInstance","Test1"},
+                    {"targetSize","5"},
+                    {"queue","bar"}
+                }
             });
 
             // assert
@@ -113,7 +81,7 @@ namespace Tests.Unit
 
         [Test]
         [Order(201)]
-        public void ExternalScalerServer_IsActive_WhenScalerDoesNotExist_ShouldLogError()
+        public void ExternalScalerServer_IsActive_WhenHangfireInstanceDoesNotExist_ShouldLogError()
         {
             var client = new ExternalScaler.ExternalScalerClient(_channel);
 
@@ -122,8 +90,14 @@ namespace Tests.Unit
             {
                 client.IsActive(new ScaledObjectRef()
                 {
-                    Name = "SomeScalerNameThatDoesNotExist",
-                    Namespace = "default"
+                    Name = "ScalerName",
+                    Namespace = "default",
+                    ScalerMetadata =
+                    {
+                        {"hangfireInstance","DoesNotExist"},
+                        {"targetSize","5"},
+                        {"queue","bar"}
+                    }
                 });
             }
             catch (RpcException)
@@ -133,7 +107,7 @@ namespace Tests.Unit
 
             // assert
             InMemorySink.Instance.LogEvents.Count(x => x.Level == LogEventLevel.Error &&
-                                                       x.MessageTemplate.Text.Equals("Unhandled exception in IsActive()"))
+                                                       x.MessageTemplate.Text.Equals("Hangfire instance {HangfireInstanceName} is not configured"))
                 .Should().Be(1);
         }
 
@@ -149,7 +123,13 @@ namespace Tests.Unit
             var reply = client.IsActive(new ScaledObjectRef()
             {
                 Name = "SomeScalerName",
-                Namespace = "default"
+                Namespace = "default",
+                ScalerMetadata =
+                {
+                    {"hangfireInstance","Test1"},
+                    {"targetSize","5"},
+                    {"queue","QueueA"}
+                }
             });
 
             // assert
@@ -169,7 +149,13 @@ namespace Tests.Unit
             var reply = client.IsActive(new ScaledObjectRef()
             {
                 Name = "SomeScalerName",
-                Namespace = "default"
+                Namespace = "default",
+                ScalerMetadata =
+                {
+                    {"hangfireInstance","Test1"},
+                    {"targetSize","5"},
+                    {"queue","QueueA"}
+                }
             });
 
             // assert
@@ -189,7 +175,13 @@ namespace Tests.Unit
             var reply = client.IsActive(new ScaledObjectRef()
             {
                 Name = "SomeScalerName",
-                Namespace = "default"
+                Namespace = "default",
+                ScalerMetadata =
+                {
+                    {"hangfireInstance","Test1"},
+                    {"targetSize","5"},
+                    {"queue","QueueA"}
+                }
             });
 
             // assert
@@ -200,7 +192,7 @@ namespace Tests.Unit
 
         [Test]
         [Order(300)]
-        public void ExternalScalerServer_GetMetricSpec_ShouldReturnMaxScaleAsScaleRecommendation()
+        public void ExternalScalerServer_GetMetricSpec_ShouldReturnTargetSizeAsScaleRecommendation()
         {
             var client = new ExternalScaler.ExternalScalerClient(_channel);
 
@@ -208,7 +200,13 @@ namespace Tests.Unit
             var reply = client.GetMetricSpec(new ScaledObjectRef()
             {
                 Name = "SomeScalerName",
-                Namespace = "default"
+                Namespace = "default",
+                ScalerMetadata =
+                {
+                    {"hangfireInstance","Test1"},
+                    {"queue","QueueA"},
+                    {"targetSize", "10"}
+                }
             });
 
             // assert
@@ -230,7 +228,13 @@ namespace Tests.Unit
                 ScaledObjectRef = new ScaledObjectRef()
                 {
                     Name = "SomeScalerName",
-                    Namespace = "default"
+                    Namespace = "default",
+                    ScalerMetadata =
+                    {
+                        {"hangfireInstance","Test1"},
+                        {"queue","QueueA"},
+                        {"targetSize", "10"}
+                    }
                 }
             });
 
@@ -253,25 +257,19 @@ namespace Tests.Unit
                 ScaledObjectRef = new ScaledObjectRef()
                 {
                     Name = "SomeScalerName",
-                    Namespace = "default"
+                    Namespace = "default",
+                    ScalerMetadata =
+                    {
+                        {"hangfireInstance","Test1"},
+                        {"queue","QueueA"},
+                        {"targetSize", "10"}
+                    }
                 }
             });
 
             // assert
             reply.Should().NotBeNull();
             reply.MetricValues.First(x => x.MetricName.Equals("queueLength")).MetricValue_.Should().Be(5);
-        }
-
-        [Test]
-        [Order(500)]
-        public void ExternalScalerServer_Close_ShouldReturnSuccessfully()
-        {
-            var client = new ExternalScaler.ExternalScalerClient(_channel);
-
-            var reply = client.Close(new ScaledObjectRef());
-
-            // assert
-            reply.Should().NotBeNull();
         }
     }
 }

@@ -6,6 +6,9 @@ metadata:
   namespace: keda-example
   name: hangfire-consumer-addition  
 spec:
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 5
+  maxReplicaCount: 3  #! Limit the maximum number of kubernetes pods that will be started regardless of queue size
   pollingInterval: 5
   jobTargetRef:    
     parallelism: 1 #! [max number of desired pods](https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#controlling-parallelism)
@@ -46,5 +49,4 @@ spec:
         scalerAddress: keda-externalscaler-hangfire:80
         hangfireInstance: "Example"
         queue: "addition"
-        targetSize: "3"
-        maxScale: "10"
+        targetSize: "3"  #! Number of hangfire jobs each pod should handle      

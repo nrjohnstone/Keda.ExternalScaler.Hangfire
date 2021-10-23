@@ -15,6 +15,7 @@ namespace Common.Utilities.Configuration
                 .Enrich.WithThreadId()
                 .Enrich.WithThreadName()
                 .Enrich.WithProperty("Application", applicationName)
+                .Enrich.WithProperty("BuildVersion", Globals.BuildVersion)
                 .Enrich.FromLogContext()
                 .MinimumLevel.Is(minimumLevel)
                 .WriteTo.Console(

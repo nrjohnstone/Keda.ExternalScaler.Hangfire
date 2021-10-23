@@ -1,10 +1,8 @@
-using System.Collections;
 using System.Collections.Generic;
 using Hangfire.Storage;
-using Keda.ExternalScaler.Hangfire;
-using Keda.ExternalScaler.Hangfire.Configuration;
+using HangfireExternalScaler.Configuration;
 
-namespace Tests.Unit
+namespace HangfireExternalScaler.Tests.Unit
 {
     /// <summary>
     /// Test Double of the ApplicationHostBuilder that allows us to replace implementations
@@ -12,20 +10,12 @@ namespace Tests.Unit
     /// </summary>
     internal class ApplicationHostBuilderTestDouble : ApplicationHostBuilder
     {
-        private readonly IHangfireScaledObjectRepository _scaledObjectRepository;
         private readonly IList<HangfireMonitorTestDouble> _monitoringApis;
 
         public ApplicationHostBuilderTestDouble(string[] args, ISettings settings, 
-            IHangfireScaledObjectRepository scaledObjectRepository,
             IList<HangfireMonitorTestDouble> monitoringApis) : base(args, settings)
         {
-            _scaledObjectRepository = scaledObjectRepository;
             _monitoringApis = monitoringApis;
-        }
-
-        protected override IHangfireScaledObjectRepository CreateHangfireScaledObjectRepository()
-        {
-            return _scaledObjectRepository;
         }
 
         protected override IMonitoringApi CreateHangfireMonitor(HangfireSqlServerSettings sqlServerSettings)

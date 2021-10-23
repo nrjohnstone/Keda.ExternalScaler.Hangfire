@@ -1,143 +1,206 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Externalscaler;
 using Google.Protobuf.Collections;
-using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
-using Scaler;
 using Serilog;
+using Serilog.Context;
+using Serilog.Core;
+using Serilog.Core.Enrichers;
 
-namespace Keda.ExternalScaler.Hangfire.Services
+namespace HangfireExternalScaler.Services
 {
-    public class ExternalScalerService : Scaler.ExternalScaler.ExternalScalerBase
+    public class ExternalScalerService : ExternalScaler.ExternalScalerBase
     {
-        private readonly IHangfireScaledObjectRepository _hangfireScaledObjectRepository;
-
         private readonly IHangfireMetricsApi _hangfireMetricsApi;
         
-        public ExternalScalerService(IHangfireScaledObjectRepository hangfireScaledObjectRepository,
-            IHangfireMetricsApi hangfireMetricsApi)
+        public ExternalScalerService(IHangfireMetricsApi hangfireMetricsApi) : base()
         {
-            if (hangfireScaledObjectRepository == null)
-                throw new ArgumentNullException(nameof(hangfireScaledObjectRepository));
             if (hangfireMetricsApi == null) 
                 throw new ArgumentNullException(nameof(hangfireMetricsApi));
-
-            _hangfireScaledObjectRepository = hangfireScaledObjectRepository;
+            
             _hangfireMetricsApi = hangfireMetricsApi;
         }
 
-        public override Task<Empty> New(NewRequest request, ServerCallContext context)
+        public override Task<IsActiveResponse> IsActive(ScaledObjectRef scaledObjectRef, ServerCallContext context)
         {
-            Log.Information("New: Entry()");
-            try
+            using (LogContext.PushProperty("Method", nameof(IsActive)))
             {
-                _hangfireScaledObjectRepository.Store(request);
-                return Task.FromResult(new Empty());
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Unhandled exception in New()");
-                throw;
-            }
-        }
-
-        public override Task<IsActiveResponse> IsActive(ScaledObjectRef request, ServerCallContext context)
-        {
-            Log.Information("IsActive");
-
-            try
-            {
-                var scalerConfiguration = _hangfireScaledObjectRepository.Get(request);
-                Log.Information("ScalerConfiguration retrieved: {HangfireInstanceName} {Queue}",
-                    scalerConfiguration.InstanceName, scalerConfiguration.Queue);
-
-                long enqueuedCount = _hangfireMetricsApi.EnqueuedCount(
-                    scalerConfiguration.InstanceName, scalerConfiguration.Queue);
-                long fetchedCount = _hangfireMetricsApi.FetchedCount(
-                    scalerConfiguration.InstanceName, scalerConfiguration.Queue);
-
-                if (enqueuedCount > 0 || fetchedCount > 0)
+                try
                 {
-                    return Task.FromResult(new IsActiveResponse() {Result = true});
+                    Log.Debug($"Entry: {nameof(IsActive)}");
+
+                    HangfireScalerConfiguration scalerConfiguration = scaledObjectRef.GetHangfireScalerConfiguration();
+
+                    ILogEventEnricher[] properties = new ILogEventEnricher[]
+                    {
+                        new PropertyEnricher("InstanceName", scalerConfiguration.InstanceName),
+                        new PropertyEnricher("Queue", scalerConfiguration.Queue),
+                    };
+
+                    using (LogContext.Push(properties))
+                    {
+                        ValidateHangfireInstanceIsConfigured(scalerConfiguration);
+
+                        long enqueuedCount = _hangfireMetricsApi.EnqueuedCount(scalerConfiguration.InstanceName,
+                            scalerConfiguration.Queue);
+
+                        long fetchedCount = _hangfireMetricsApi.FetchedCount(scalerConfiguration.InstanceName,
+                            scalerConfiguration.Queue);
+
+                        bool isActive = true;
+
+                        // Only allow scaling to 0 when fetchedCount (jobs currently being processed)
+                        // is also 0
+                        if (enqueuedCount == 0 && fetchedCount == 0)
+                        {
+                            isActive = false;
+                        }
+
+                        Log.Debug("Enqueued/Fetched: {EnqueuedCount}/{FetchedCount}",
+                            enqueuedCount, fetchedCount);
+                        Log.Debug("IsActive: {IsActive}", isActive);
+
+                        var isActiveResponse = new IsActiveResponse() { Result = isActive };
+                        Log.Debug($"Exit: {nameof(IsActive)}");
+                        return Task.FromResult(isActiveResponse);
+                    }
                 }
-
-                return Task.FromResult(new IsActiveResponse() {Result = false});
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Unhandled exception in IsActive()");
-                throw;
+                catch (ArgumentException ex)
+                {
+                    throw new RpcException(new Status(StatusCode.InvalidArgument, ex.Message));
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Unhandled exception: {ExceptionType}", ex.GetType());
+                    throw new RpcException(new Status(StatusCode.Internal, ex.Message));
+                }
             }
         }
 
-        public override Task<GetMetricSpecResponse> GetMetricSpec(ScaledObjectRef request, ServerCallContext context)
+        public override Task<GetMetricSpecResponse> GetMetricSpec(ScaledObjectRef scaledObjectRef, ServerCallContext context)
         {
-            Log.Information("GetMetricSpec");
-            try
+            using (LogContext.PushProperty("Method", nameof(GetMetricSpec)))
             {
-                var scalerConfiguration = _hangfireScaledObjectRepository.Get(request);
-
-                var response = new GetMetricSpecResponse();
-                var fields = new RepeatedField<MetricSpec>();
-
-                fields.Add(new MetricSpec()
+                try
                 {
-                    MetricName = "ScaleRecommendation",
-                    TargetSize = scalerConfiguration.MaxScale
-                });
+                    Log.Debug($"Entry: {nameof(GetMetricSpec)}");
 
-                response.MetricSpecs.Add(fields);
+                    Log.Information("GetMetricSpec: {Name}", scaledObjectRef.Name);
+                    Log.Debug("ScaledObjectRef {@ScaledObjectRef}", scaledObjectRef);
 
-                return Task.FromResult(response);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Unhandled exception in GetMetricSpec()");
-                throw;
+                    var scalerConfiguration = scaledObjectRef.GetHangfireScalerConfiguration();
+                    ValidateHangfireInstanceIsConfigured(scalerConfiguration);
+
+                    var response = new GetMetricSpecResponse();
+                    var fields = new RepeatedField<MetricSpec>();
+
+                    fields.Add(new MetricSpec()
+                    {
+                        MetricName = "ScaleRecommendation",
+                        TargetSize = scalerConfiguration.TargetSize
+                    });
+
+                    response.MetricSpecs.Add(fields);
+
+                    Log.Debug($"Exit: {nameof(GetMetricSpec)}");
+                    return Task.FromResult(response);
+                }
+                catch (ArgumentException ex)
+                {
+                    throw new RpcException(new Status(StatusCode.InvalidArgument, ex.Message));
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Unhandled exception: {ExceptionType}", ex.GetType());
+                    throw new RpcException(new Status(StatusCode.Internal, ex.Message));
+                }
             }
         }
 
         public override Task<GetMetricsResponse> GetMetrics(GetMetricsRequest request, ServerCallContext context)
         {
-            Log.Information("GetMetrics");
-            try
+            ILogEventEnricher[] properties = new ILogEventEnricher[]
             {
-                if (request.MetricName.Equals("queueLength"))
+                new PropertyEnricher("Method", nameof(GetMetrics)),
+                new PropertyEnricher("MetricName", request.MetricName),
+                new PropertyEnricher("ScaleObjectRefName", request.ScaledObjectRef.Name),
+                new PropertyEnricher("ScaleObjectRefNamespace", request.ScaledObjectRef.Namespace),
+            };
+            
+            using (LogContext.Push(properties))
+            {
+                try
                 {
-                    var scalerConfiguration = _hangfireScaledObjectRepository.Get(request.ScaledObjectRef);
-                    Log.Information("ScalerConfiguration retrieved: {HangfireInstanceName} {Queue}", 
-                        scalerConfiguration.InstanceName, scalerConfiguration.Queue);
+                    Log.Information("GetMetrics: {MetricName}", request.MetricName);
+                    Log.Information("ScaledObjectRef {@ScaledObjectRef}", request.ScaledObjectRef);
 
-                    long enqueuedCount = _hangfireMetricsApi.EnqueuedCount(
-                        scalerConfiguration.InstanceName, scalerConfiguration.Queue);
+                    HangfireScalerConfiguration scalerConfiguration =
+                        request.ScaledObjectRef.GetHangfireScalerConfiguration();
 
-                    Log.Information("Enqueued Count: {EnqueuedCount}", enqueuedCount);
+                    ValidateHangfireInstanceIsConfigured(scalerConfiguration);
 
-                    var response = new GetMetricsResponse();
-
-                    response.MetricValues.Add(new MetricValue()
+                    // TODO : ScaledJobs in KEDA always request queueLength, need to implement handling for ScaledObject
+                    if (request.MetricName.Equals("queueLength"))
                     {
-                        MetricName = "queueLength",
-                        MetricValue_ = enqueuedCount
-                    });
-                    
-                    return Task.FromResult(response);
+                        ILogEventEnricher[] scalerProperties = new ILogEventEnricher[]
+                        {
+                            new PropertyEnricher("InstanceName", scalerConfiguration.InstanceName),
+                            new PropertyEnricher("Queue", scalerConfiguration.Queue),
+                        };
+
+                        using (LogContext.Push(scalerProperties))
+                        {
+                            Log.Debug("Retrieving metrics for {InstanceName} {Queue}",
+                                scalerConfiguration.InstanceName, scalerConfiguration.Queue);
+
+                            long enqueuedCount = _hangfireMetricsApi.EnqueuedCount(
+                                scalerConfiguration.InstanceName, scalerConfiguration.Queue);
+
+                            Log.Debug("Enqueued: {EnqueuedCount}", enqueuedCount);
+
+                            var response = new GetMetricsResponse();
+
+                            var queueLength = enqueuedCount;
+
+                            response.MetricValues.Add(new MetricValue()
+                            {
+                                MetricName = "queueLength",
+                                MetricValue_ = queueLength
+                            });
+
+                            Log.Debug("QueueLength: {QueueLength}", queueLength);
+
+                            Log.Debug("GetMetrics:Exit");
+
+                            return Task.FromResult(response);
+                        }
+                    }
+
+                    throw new RpcException(new Status(StatusCode.InvalidArgument, $"MetricName {request.MetricName} is not implemented"));
                 }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Unhandled exception in GetMetrics()");
-                throw;
-            }
+                catch (ArgumentException ex)
+                {
+                    throw new RpcException(new Status(StatusCode.InvalidArgument, ex.Message));
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Unhandled exception: {ExceptionType}", ex.GetType());
+                    throw new RpcException(new Status(StatusCode.Internal, ex.Message));
+                }
 
-            Log.Error("MetricName {MetricName} is not implemented", request.MetricName);
-            throw new NotSupportedException($"MetricName {request.MetricName} is not implemented");
+            }
         }
-
-        public override Task<Empty> Close(ScaledObjectRef request, ServerCallContext context)
+        
+        private void ValidateHangfireInstanceIsConfigured(HangfireScalerConfiguration scalerConfiguration)
         {
-            // TODO : Close should maybe remove the configuration from the in memory repository
-            return Task.FromResult(new Empty());
+            if (!_hangfireMetricsApi.Exists(scalerConfiguration.InstanceName))
+            {
+                Log.Error("Hangfire instance {HangfireInstanceName} is not configured",
+                    scalerConfiguration.InstanceName);
+                throw new ArgumentException(
+                    $"Hangfire instance {scalerConfiguration.InstanceName} is not configured");
+            }
         }
     }
 }

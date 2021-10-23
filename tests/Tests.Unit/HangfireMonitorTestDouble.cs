@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Hangfire.Storage;
 using Hangfire.Storage.Monitoring;
 
-namespace Tests.Unit
+namespace HangfireExternalScaler.Tests.Unit
 {
     /// <summary>
     /// Test Double implementation for the Hangfire IMonitoringApi

@@ -2,8 +2,8 @@
 using System.Data.SqlClient;
 using Hangfire.SqlServer;
 using Hangfire.Storage;
-using Keda.ExternalScaler.Hangfire.Configuration;
-using Keda.ExternalScaler.Hangfire.Services;
+using HangfireExternalScaler.Configuration;
+using HangfireExternalScaler.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -11,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog.Context;
 
-namespace Keda.ExternalScaler.Hangfire
+namespace HangfireExternalScaler
 {
     public class ApplicationHostBuilder
     {
@@ -40,16 +40,9 @@ namespace Keda.ExternalScaler.Hangfire
         private void ConfigureServices(IServiceCollection services)
         {
             var hangfireMonitoringRouter = ConfigureHangfireMonitoring(_settings.HangfireSqlInstances);
-            var hangfireScaledObjectRepository = CreateHangfireScaledObjectRepository();
 
             services.AddSingleton<IHangfireMetricsApi>(hangfireMonitoringRouter);
-            services.AddSingleton<IHangfireScaledObjectRepository>(hangfireScaledObjectRepository);
             services.AddGrpc();
-        }
-
-        protected virtual IHangfireScaledObjectRepository CreateHangfireScaledObjectRepository()
-        {
-            return new HangfireScaledObjectRepositoryInMemory();
         }
 
         private IHangfireMetricsApi ConfigureHangfireMonitoring(IEnumerable<HangfireSqlServerSettings> hangfireSqlServerInstance)

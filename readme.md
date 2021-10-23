@@ -4,8 +4,7 @@
 
 This repository is an example implementation of the KEDA External Scaler specification written in C# / .NET Core 3.x
 
-It demonstates how to build a GRPC service that will attach to any number of named Hangfire instances and provide scaling
-metrics to KEDA based on the number of enqueued jobs.
+It demonstates how to build a GRPC service that will attach to any number of named Hangfire instances and provide scaling metrics to KEDA based on the number of enqueued jobs.
 
 The code in this repository assumes a number of things about you
 

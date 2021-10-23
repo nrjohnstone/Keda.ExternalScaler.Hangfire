@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Serilog.Events;
 
-namespace Keda.ExternalScaler.Hangfire.Configuration
+namespace HangfireExternalScaler.Configuration
 {
     public class Settings : ISettings
     {

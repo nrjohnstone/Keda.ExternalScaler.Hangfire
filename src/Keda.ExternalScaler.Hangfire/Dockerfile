@@ -5,4 +5,4 @@ EXPOSE 443
 
 WORKDIR /app
 COPY [".", "."]
-ENTRYPOINT ["dotnet", "Keda.ExternalScaler.Hangfire.dll"]
+ENTRYPOINT ["dotnet", "HangfireExternalScaler.dll"]

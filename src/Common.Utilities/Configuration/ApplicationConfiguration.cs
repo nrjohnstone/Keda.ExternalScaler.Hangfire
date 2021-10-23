@@ -32,4 +32,9 @@ namespace Common.Utilities.Configuration
             return configurationBuilder;
         }
     }
+    
+    public static class Globals
+    {
+        public static string BuildVersion = "1.3";
+    }
 }
