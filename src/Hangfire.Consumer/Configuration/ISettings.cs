@@ -10,5 +10,6 @@ namespace Hangfire.Consumer.Configuration
         HangfireSqlServerSettings Hangfire{ get; set; }
         string HangfireQueue { get; set; }
         int IdleTimeoutSeconds { get; set; }
+        int StartupDelay { get; set; }
     }
 }

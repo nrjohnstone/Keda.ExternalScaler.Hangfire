@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Data.SqlClient;
-using System.Linq;
 using System.Threading;
 using Common.Utilities.Configuration;
 using Hangfire.Consumer.Configuration;
@@ -44,6 +43,14 @@ namespace Hangfire.Consumer
             };
             serverJobOptions.UseSimpleInjector(container);
 
+            // Simulate a slow startup
+            if (settings.StartupDelay > 0)
+            {
+                Log.Information("Delaying attaching to hangfire for {StartupDelay} seconds",
+                    settings.StartupDelay);
+                Thread.Sleep(settings.StartupDelay * 1000);
+            }
+            
             var server = new IdleBackgroundJobServer(jobRepository, serverJobOptions,
                 TimeSpan.FromSeconds(settings.IdleTimeoutSeconds));
 

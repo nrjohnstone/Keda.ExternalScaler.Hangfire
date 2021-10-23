@@ -2,6 +2,8 @@
 HangfireQueue: multiply
 IdleTimeoutSeconds: 60
 
+StartupDelay: 0
+
 Hangfire:
     - Address: <SQL_SERVER_ADDRESS_HERE>
       Username: <SQL_USERNAME_HERE>
