@@ -17,6 +17,14 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hangfire.Dashboard", "src\H
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hangfire.Consumer.Contracts", "src\Hangfire.Consumer.Contracts\Hangfire.Consumer.Contracts.csproj", "{30372087-5B2E-46C3-9ED4-42588842FF1F}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Files", "Files", "{FC8C68F9-7C89-479A-BA7B-9455CD1E706A}"
+ProjectSection(SolutionItems) = preProject
+	readme.md = readme.md
+	build.cake = build.cake
+	environment.ps1.template = environment.ps1.template
+	deploy.ps1 = deploy.ps1
+EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
