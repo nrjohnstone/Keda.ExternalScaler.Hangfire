@@ -17,7 +17,7 @@ medium for requesting work from consumers
 ## Prerequisites
 
 ### YTT - Yaml Templating Tool
-This is used to template out the Kubernetes yaml files.
+This is used to template out the Kubernetes yaml files so it can be deployed to different environments easily from a developers laptop
 Get it from here https://get-ytt.io/
 
 ### Container Registry

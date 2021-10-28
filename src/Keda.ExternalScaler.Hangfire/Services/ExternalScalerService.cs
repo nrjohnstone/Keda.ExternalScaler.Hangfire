@@ -26,54 +26,42 @@ namespace HangfireExternalScaler.Services
         {
             using (LogContext.PushProperty("Method", nameof(IsActive)))
             {
-                try
+                Log.Debug($"Entry: {nameof(IsActive)}");
+
+                HangfireScalerConfiguration scalerConfiguration = scaledObjectRef.GetHangfireScalerConfiguration();
+
+                ILogEventEnricher[] properties = new ILogEventEnricher[]
                 {
-                    Log.Debug($"Entry: {nameof(IsActive)}");
+                    new PropertyEnricher("InstanceName", scalerConfiguration.InstanceName),
+                    new PropertyEnricher("Queue", scalerConfiguration.Queue),
+                };
 
-                    HangfireScalerConfiguration scalerConfiguration = scaledObjectRef.GetHangfireScalerConfiguration();
+                using (LogContext.Push(properties))
+                {
+                    ValidateHangfireInstanceIsConfigured(scalerConfiguration);
 
-                    ILogEventEnricher[] properties = new ILogEventEnricher[]
+                    long enqueuedCount = _hangfireMetricsApi.EnqueuedCount(scalerConfiguration.InstanceName,
+                        scalerConfiguration.Queue);
+
+                    long fetchedCount = _hangfireMetricsApi.FetchedCount(scalerConfiguration.InstanceName,
+                        scalerConfiguration.Queue);
+
+                    bool isActive = true;
+
+                    // Only allow scaling to 0 when fetchedCount (jobs currently being processed)
+                    // is also 0
+                    if (enqueuedCount == 0 && fetchedCount == 0)
                     {
-                        new PropertyEnricher("InstanceName", scalerConfiguration.InstanceName),
-                        new PropertyEnricher("Queue", scalerConfiguration.Queue),
-                    };
-
-                    using (LogContext.Push(properties))
-                    {
-                        ValidateHangfireInstanceIsConfigured(scalerConfiguration);
-
-                        long enqueuedCount = _hangfireMetricsApi.EnqueuedCount(scalerConfiguration.InstanceName,
-                            scalerConfiguration.Queue);
-
-                        long fetchedCount = _hangfireMetricsApi.FetchedCount(scalerConfiguration.InstanceName,
-                            scalerConfiguration.Queue);
-
-                        bool isActive = true;
-
-                        // Only allow scaling to 0 when fetchedCount (jobs currently being processed)
-                        // is also 0
-                        if (enqueuedCount == 0 && fetchedCount == 0)
-                        {
-                            isActive = false;
-                        }
-
-                        Log.Debug("Enqueued/Fetched: {EnqueuedCount}/{FetchedCount}",
-                            enqueuedCount, fetchedCount);
-                        Log.Debug("IsActive: {IsActive}", isActive);
-
-                        var isActiveResponse = new IsActiveResponse() { Result = isActive };
-                        Log.Debug($"Exit: {nameof(IsActive)}");
-                        return Task.FromResult(isActiveResponse);
+                        isActive = false;
                     }
-                }
-                catch (ArgumentException ex)
-                {
-                    throw new RpcException(new Status(StatusCode.InvalidArgument, ex.Message));
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Unhandled exception: {ExceptionType}", ex.GetType());
-                    throw new RpcException(new Status(StatusCode.Internal, ex.Message));
+
+                    Log.Debug("Enqueued/Fetched: {EnqueuedCount}/{FetchedCount}",
+                        enqueuedCount, fetchedCount);
+                    Log.Debug("IsActive: {IsActive}", isActive);
+
+                    var isActiveResponse = new IsActiveResponse() { Result = isActive };
+                    Log.Debug($"Exit: {nameof(IsActive)}");
+                    return Task.FromResult(isActiveResponse);
                 }
             }
         }
@@ -82,39 +70,27 @@ namespace HangfireExternalScaler.Services
         {
             using (LogContext.PushProperty("Method", nameof(GetMetricSpec)))
             {
-                try
+                Log.Debug($"Entry: {nameof(GetMetricSpec)}");
+
+                Log.Information("GetMetricSpec: {Name}", scaledObjectRef.Name);
+                Log.Debug("ScaledObjectRef {@ScaledObjectRef}", scaledObjectRef);
+
+                var scalerConfiguration = scaledObjectRef.GetHangfireScalerConfiguration();
+                ValidateHangfireInstanceIsConfigured(scalerConfiguration);
+
+                var response = new GetMetricSpecResponse();
+                var fields = new RepeatedField<MetricSpec>();
+
+                fields.Add(new MetricSpec()
                 {
-                    Log.Debug($"Entry: {nameof(GetMetricSpec)}");
+                    MetricName = "ScaleRecommendation",
+                    TargetSize = scalerConfiguration.TargetSize
+                });
 
-                    Log.Information("GetMetricSpec: {Name}", scaledObjectRef.Name);
-                    Log.Debug("ScaledObjectRef {@ScaledObjectRef}", scaledObjectRef);
+                response.MetricSpecs.Add(fields);
 
-                    var scalerConfiguration = scaledObjectRef.GetHangfireScalerConfiguration();
-                    ValidateHangfireInstanceIsConfigured(scalerConfiguration);
-
-                    var response = new GetMetricSpecResponse();
-                    var fields = new RepeatedField<MetricSpec>();
-
-                    fields.Add(new MetricSpec()
-                    {
-                        MetricName = "ScaleRecommendation",
-                        TargetSize = scalerConfiguration.TargetSize
-                    });
-
-                    response.MetricSpecs.Add(fields);
-
-                    Log.Debug($"Exit: {nameof(GetMetricSpec)}");
-                    return Task.FromResult(response);
-                }
-                catch (ArgumentException ex)
-                {
-                    throw new RpcException(new Status(StatusCode.InvalidArgument, ex.Message));
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Unhandled exception: {ExceptionType}", ex.GetType());
-                    throw new RpcException(new Status(StatusCode.Internal, ex.Message));
-                }
+                Log.Debug($"Exit: {nameof(GetMetricSpec)}");
+                return Task.FromResult(response);
             }
         }
 
@@ -130,9 +106,7 @@ namespace HangfireExternalScaler.Services
             
             using (LogContext.Push(properties))
             {
-                try
-                {
-                    Log.Information("GetMetrics: {MetricName}", request.MetricName);
+                Log.Information("GetMetrics: {MetricName}", request.MetricName);
                     Log.Information("ScaledObjectRef {@ScaledObjectRef}", request.ScaledObjectRef);
 
                     HangfireScalerConfiguration scalerConfiguration =
@@ -177,18 +151,7 @@ namespace HangfireExternalScaler.Services
                         }
                     }
 
-                    throw new RpcException(new Status(StatusCode.InvalidArgument, $"MetricName {request.MetricName} is not implemented"));
-                }
-                catch (ArgumentException ex)
-                {
-                    throw new RpcException(new Status(StatusCode.InvalidArgument, ex.Message));
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Unhandled exception: {ExceptionType}", ex.GetType());
-                    throw new RpcException(new Status(StatusCode.Internal, ex.Message));
-                }
-
+                    throw new ArgumentException($"MetricName {request.MetricName} is not implemented");
             }
         }
         

@@ -57,7 +57,6 @@ namespace HangfireExternalScaler.Tests.Unit
         }
 
         [Test]
-        [Order(200)]
         public void ExternalScalerServer_IsActive_ShouldReturnSuccessfully()
         {
             var client = new ExternalScaler.ExternalScalerClient(_channel);
@@ -80,7 +79,6 @@ namespace HangfireExternalScaler.Tests.Unit
         }
 
         [Test]
-        [Order(201)]
         public void ExternalScalerServer_IsActive_WhenHangfireInstanceDoesNotExist_ShouldLogError()
         {
             var client = new ExternalScaler.ExternalScalerClient(_channel);
@@ -100,9 +98,8 @@ namespace HangfireExternalScaler.Tests.Unit
                     }
                 });
             }
-            catch (RpcException)
+            catch (RpcException )
             {
-
             }
 
             // assert
@@ -112,7 +109,39 @@ namespace HangfireExternalScaler.Tests.Unit
         }
 
         [Test]
-        [Order(205)]
+        public void ExternalScalerServer_IsActive_WhenHangfireInstanceDoesNotExist_ShouldThrowRpcException_WithStatusCodeInvalidArgument()
+        {
+            var client = new ExternalScaler.ExternalScalerClient(_channel);
+
+            RpcException returnedException = new RpcException(new Status(StatusCode.Unknown, "Initial test exception"));
+            
+            // act
+            try
+            {
+                client.IsActive(new ScaledObjectRef()
+                {
+                    Name = "ScalerName",
+                    Namespace = "default",
+                    ScalerMetadata =
+                    {
+                        {"hangfireInstance","DoesNotExist"},
+                        {"targetSize","5"},
+                        {"queue","bar"}
+                    }
+                });
+            }
+            catch (RpcException ex)
+            {
+                returnedException = ex;
+            }
+
+            // assert
+            returnedException.Should().NotBeNull();
+            returnedException.StatusCode.Should().Be(StatusCode.InvalidArgument);
+            returnedException.Message.Should().Contain("Detail=\"Hangfire instance DoesNotExist is not configured\"");
+        }
+        
+        [Test]
         public void ExternalScalerServer_IsActive_WhenNoJobsAreEnqueuedOrFetched_ShouldReturnActiveAsFalse()
         {
             var client = new ExternalScaler.ExternalScalerClient(_channel);
@@ -138,7 +167,6 @@ namespace HangfireExternalScaler.Tests.Unit
         }
 
         [Test]
-        [Order(210)]
         public void ExternalScalerServer_IsActive_WhenNoJobsAreEnqueuedButJobsAreFetched_ShouldReturnActiveAsTrue()
         {
             var client = new ExternalScaler.ExternalScalerClient(_channel);
@@ -164,7 +192,6 @@ namespace HangfireExternalScaler.Tests.Unit
         }
 
         [Test]
-        [Order(220)]
         public void ExternalScalerServer_IsActive_WhenJobsAreEnqueuedButNoJobsAreFetched_ShouldReturnActiveAsTrue()
         {
             var client = new ExternalScaler.ExternalScalerClient(_channel);
@@ -191,7 +218,6 @@ namespace HangfireExternalScaler.Tests.Unit
 
 
         [Test]
-        [Order(300)]
         public void ExternalScalerServer_GetMetricSpec_ShouldReturnTargetSizeAsScaleRecommendation()
         {
             var client = new ExternalScaler.ExternalScalerClient(_channel);
@@ -215,7 +241,6 @@ namespace HangfireExternalScaler.Tests.Unit
         }
 
         [Test]
-        [Order(400)]
         public void ExternalScalerServer_GetMetrics_WhenNoJobsAreEnqueued_ShouldReturnQueueLengthAsZero()
         {
             var client = new ExternalScaler.ExternalScalerClient(_channel);
@@ -244,7 +269,6 @@ namespace HangfireExternalScaler.Tests.Unit
         }
 
         [Test]
-        [Order(450)]
         public void ExternalScalerServer_GetMetrics_WhenJobsAreEnqueued_ShouldReturnNumberOfEnqueueJobsAsQueueLength()
         {
             var client = new ExternalScaler.ExternalScalerClient(_channel);

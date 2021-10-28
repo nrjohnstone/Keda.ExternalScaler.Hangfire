@@ -3,6 +3,7 @@ using System.Data.SqlClient;
 using Hangfire.SqlServer;
 using Hangfire.Storage;
 using HangfireExternalScaler.Configuration;
+using HangfireExternalScaler.Interceptors;
 using HangfireExternalScaler.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -42,7 +43,11 @@ namespace HangfireExternalScaler
             var hangfireMonitoringRouter = ConfigureHangfireMonitoring(_settings.HangfireSqlInstances);
 
             services.AddSingleton<IHangfireMetricsApi>(hangfireMonitoringRouter);
-            services.AddGrpc();
+            services.AddGrpc(
+                options =>
+                {
+                    options.Interceptors.Add<ExceptionInterceptor>();
+                });
         }
 
         private IHangfireMetricsApi ConfigureHangfireMonitoring(IEnumerable<HangfireSqlServerSettings> hangfireSqlServerInstance)
